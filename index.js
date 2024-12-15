@@ -25,16 +25,43 @@ app.listen(PORT, () => {
   console.log(`Express server is listening on port ${PORT}`);
 });
 
+// Маппинг выбранных языков пользователей
+const userLanguages = {};
+
+// Функции для сообщений на разных языках
+const messages = {
+  ru: {
+    start: 'Выберите язык / Choose your language:',
+    languageSet: 'Установлен русский язык',
+    greeting: 'Привет, я CircleBot, здесь предоставлены все мои функции',
+    videoRequest: 'Отправьте мне видео, чтобы я мог преобразовать его в кружок.',
+    help: 'Это демонстрационный бот. Вы можете использовать команды /start, /help и /language.',
+    error: 'Произошла ошибка при обработке видео.',
+    videoProcessed: 'Ваше видео-кружок готов!',
+  },
+  en: {
+    start: 'Choose your language / Выберите язык:',
+    languageSet: 'Language set to English.',
+    greeting: 'Hello, I am CircleBot, here are all the bot features',
+    videoRequest: 'Send me a video so I can convert it into a circle.',
+    help: 'This is a demo bot. You can use /start, /help, and /language commands.',
+    error: 'An error occurred while processing the video.',
+    videoProcessed: 'Your circle video is ready!',
+  }
+};
+
+// Устанавливаем команды для бота
 bot.setMyCommands([
   { command: '/start', description: 'Начать работу с ботом' },
   { command: '/help', description: 'Помощь и информация' },
   { command: '/language', description: 'Выбрать язык' }
 ]);
 
-// Обработка команды /start и /language
-bot.onText(/\/start|\/language/, (msg) => {
+// Обработка команды /start
+bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId, 'Выберите язык / Choose your language:', {
+  const lang = userLanguages[chatId] || 'ru'; // Получаем выбранный язык или по умолчанию русский
+  bot.sendMessage(chatId, messages[lang].start, {
     reply_markup: {
       inline_keyboard: [
         [{ text: '🇷🇺 Русский', callback_data: 'lang_ru' }],
@@ -44,6 +71,28 @@ bot.onText(/\/start|\/language/, (msg) => {
   });
 });
 
+// Обработка команды /language
+bot.onText(/\/language/, (msg) => {
+  const chatId = msg.chat.id;
+  const lang = userLanguages[chatId] || 'ru'; // Получаем выбранный язык или по умолчанию русский
+  bot.sendMessage(chatId, messages[lang].start, {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '🇷🇺 Русский', callback_data: 'lang_ru' }],
+        [{ text: '🇬🇧 English', callback_data: 'lang_en' }]
+      ]
+    }
+  });
+});
+
+// Обработка команды /help
+bot.onText(/\/help/, (msg) => {
+  const chatId = msg.chat.id;
+  const lang = userLanguages[chatId] || 'ru'; // Получаем язык для этого чата
+  bot.sendMessage(chatId, messages[lang].help);
+});
+
+// Обработка выбора языка
 bot.on('callback_query', async callbackQuery => {
   const chatId = callbackQuery.message.chat.id;
   const data = callbackQuery.data;
@@ -51,8 +100,9 @@ bot.on('callback_query', async callbackQuery => {
   bot.answerCallbackQuery(callbackQuery.id);
 
   if (data === 'lang_ru') {
-    bot.sendMessage(chatId, 'Установлен русский язык');
-    bot.sendMessage(chatId, 'Привет, я *NAME*, здесь предоставлены все функции бота', {
+    userLanguages[chatId] = 'ru'; // Сохраняем выбранный язык
+    bot.sendMessage(chatId, messages.ru.languageSet);
+    bot.sendMessage(chatId, messages.ru.greeting, {
       reply_markup: {
         inline_keyboard: [
           [{ text: '🎬Видео в кружок🎬', callback_data: 'vtc' }],
@@ -62,8 +112,9 @@ bot.on('callback_query', async callbackQuery => {
       }
     });
   } else if (data === 'lang_en') {
-    bot.sendMessage(chatId, 'Language set to English.');
-    bot.sendMessage(chatId, 'Hello, I am *NAME*, here are all the bot features', {
+    userLanguages[chatId] = 'en'; // Сохраняем выбранный язык
+    bot.sendMessage(chatId, messages.en.languageSet);
+    bot.sendMessage(chatId, messages.en.greeting, {
       reply_markup: {
         inline_keyboard: [
           [{ text: '🎬Video to circle🎬', callback_data: 'vtc' }],
@@ -73,7 +124,7 @@ bot.on('callback_query', async callbackQuery => {
       }
     });
   } else if (data === 'lng') {
-    bot.sendMessage(chatId, 'Выберите язык / Choose your language:', {
+    bot.sendMessage(chatId, messages[userLanguages[chatId]].start, {
       reply_markup: {
         inline_keyboard: [
           [{ text: '🇷🇺 Русский', callback_data: 'lang_ru' }],
@@ -82,40 +133,35 @@ bot.on('callback_query', async callbackQuery => {
       }
     });
   } else if (data === 'help') {
-    bot.sendMessage(chatId, 'Это демонстрационный бот. Вы можете использовать команды /start, /help и /language.');
+    const lang = userLanguages[chatId] || 'ru';
+    bot.sendMessage(chatId, messages[lang].help);
   } else if (data === 'vtc') {
-    bot.sendMessage(chatId, 'Отправьте мне видео, чтобы я мог преобразовать его в кружок.');
+    const lang = userLanguages[chatId] || 'ru';
+    bot.sendMessage(chatId, messages[lang].videoRequest);
   }
 });
 
+// Обработка сообщений (например, видео)
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
+  const lang = userLanguages[chatId] || 'ru'; // Получаем язык для этого чата
 
-  // Игнорируем команды
-  const text = msg.text;
-  if (text === '/start' || text === '/help' || text === '/language') return;
-
-  // Проверка, что это видео
+  // Если получено видео
   if (msg.video) {
     const fileId = msg.video.file_id;
-
     const processingMessage = await bot.sendMessage(chatId, 'Видео получено, начинается обработка...');
 
     try {
       const fileUrl = await bot.getFileLink(fileId);
 
-      const __filename = fileURLToPath(import.meta.url); // Получаем текущий файл
-      const __dirname = path.dirname(__filename); // Получаем директорию текущего файла
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = path.dirname(__filename);
 
       const tmpDir = path.join(__dirname, 'tmp');
-      if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir); // Создаем временную папку
+      if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir);
       const inputPath = path.join(tmpDir, `input-${chatId}.mp4`);
       const outputPath = path.join(tmpDir, `output-${chatId}.mp4`);
 
-      // Логирование пути к видео
-      console.log(`Получение видео из ${fileUrl}`);
-
-      // Скачиваем видео
       const downloadVideo = async () => {
         const response = await axios.get(fileUrl, { responseType: 'stream' });
         const writer = fs.createWriteStream(inputPath);
@@ -127,18 +173,14 @@ bot.on('message', async (msg) => {
       };
 
       await downloadVideo();
-      // Логирование информации о загруженном видео
-      console.log(`Видео успешно загружено на сервер. Путь: ${inputPath}`);
 
-      // Указываем путь к ffmpeg
-      ffmpeg.setFfmpegPath(ffmpegPath);  // Использование ffmpeg-static
+      ffmpeg.setFfmpegPath(ffmpegPath);
 
-      // Используем ffmpeg для обработки видео
       ffmpeg(inputPath)
         .output(outputPath)
         .videoFilter([
-          'crop=400:400:(iw-400)/2:(ih-400)/2',  // Обрезаем видео, чтобы получить квадрат в центре
-          'scale=400:400'         // Масштабируем до размера 400x400
+          'crop=400:400:(iw-400)/2:(ih-400)/2',
+          'scale=400:400'
         ])
         .outputOptions('-pix_fmt', 'yuv420p')
         .on('start', (commandLine) => {
@@ -148,16 +190,14 @@ bot.on('message', async (msg) => {
           console.log(`ffmpeg stderr: ${stderrLine}`);
         })
         .on('end', async () => {
-          console.log('ffmpeg processing completed');
           if (fs.existsSync(outputPath)) {
             const stats = fs.statSync(outputPath);
             console.log(`Output file exists. Size: ${stats.size} bytes`);
-            await bot.sendVideoNote(chatId, outputPath, { caption: 'Ваше видео-кружок готов!' });
+            await bot.sendVideoNote(chatId, outputPath, { caption: messages[lang].videoProcessed });
           } else {
-            console.log('Output file does not exist!');
             await bot.sendMessage(chatId, 'Ошибка: не удалось найти обработанное видео.');
           }
-          // Асинхронное удаление файлов
+
           try {
             await fs.promises.unlink(inputPath);
             await fs.promises.unlink(outputPath);
@@ -166,20 +206,16 @@ bot.on('message', async (msg) => {
           }
         })
         .on('error', (err) => {
-          bot.sendMessage(chatId, `Произошла ошибка при обработке видео: ${err.message}`);
+          bot.sendMessage(chatId, `${messages[lang].error}: ${err.message}`);
           console.error('Ошибка при обработке видео:', err.message);
         })
         .run();
     } catch (error) {
-      bot.sendMessage(chatId, 'Произошла ошибка при обработке видео.');
-      bot.sendMessage(chatId, error.message);
+      bot.sendMessage(chatId, `${messages[lang].error}`);
       console.error('Ошибка при скачивании или обработке видео:', error.message);
     } finally {
       bot.deleteMessage(chatId, processingMessage.message_id);
     }
-  } else {
-    // Если это не видео, отправляем пользователю сообщение
-    bot.sendMessage(chatId, 'Пожалуйста, отправьте видео для обработки.');
   }
 });
 
