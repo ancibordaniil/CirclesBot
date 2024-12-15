@@ -103,7 +103,7 @@ bot.on('message', async (msg) => {
 
     try {
       const fileUrl = await bot.getFileLink(fileId);
-            
+
       const __filename = fileURLToPath(import.meta.url); // Получаем текущий файл
       const __dirname = path.dirname(__filename); // Получаем директорию текущего файла
 
@@ -114,11 +114,11 @@ bot.on('message', async (msg) => {
 
       // Логирование пути к видео
       console.log(`Получение видео из ${fileUrl}`);
-      
+
       // Скачиваем видео
       const downloadVideo = async () => {
         const response = await axios.get(fileUrl, { responseType: 'stream' });
-        const writer = fs.createWriteStream(inputPath);        
+        const writer = fs.createWriteStream(inputPath);
         response.data.pipe(writer);
         return new Promise((resolve, reject) => {
           writer.on('finish', resolve);
@@ -126,7 +126,7 @@ bot.on('message', async (msg) => {
         });
       };
 
-      await downloadVideo();      
+      await downloadVideo();
       // Логирование информации о загруженном видео
       console.log(`Видео успешно загружено на сервер. Путь: ${inputPath}`);
 
@@ -137,8 +137,8 @@ bot.on('message', async (msg) => {
       ffmpeg(inputPath)
         .output(outputPath)
         .videoFilter([
-          'crop=in_w:in_w:(in_w/2):(in_h/4)',  // Обрезаем видео до квадрата
-          'scale=400:400'         // Устанавливаем размер
+          'crop=400:400:(iw-400)/2:(ih-400)/2',  // Обрезаем видео, чтобы получить квадрат в центре
+          'scale=400:400'         // Масштабируем до размера 400x400
         ])
         .outputOptions('-pix_fmt', 'yuv420p')
         .on('start', (commandLine) => {
