@@ -6,29 +6,24 @@ import TelegramBot from 'node-telegram-bot-api';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static'; // Использование ffmpeg-static
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 
-const token = '7401632575:AAGIPNXZGltUiN5ch8v20ZBlapcrvQAu0Y8';
-const ngrokUrl = 'https://9a78-176-124-146-172.ngrok-free.app';
+dotenv.config();
+
+const token = process.env.TELEGRAM_BOT_TOKEN;
 
 const bot = new TelegramBot(token, { polling: true });
 
 const app = express();
 app.use(express.json());
 
-app.post(`/bot${token}`, (req, res) => {
-  bot.processUpdate(req.body);
-  res.sendStatus(200);
-});
-
 const PORT = 3001;
 app.listen(PORT, () => {
   console.log(`Express server is listening on port ${PORT}`);
 });
 
-// Маппинг выбранных языков пользователей
 const userLanguages = {};
 
-// Функции для сообщений на разных языках
 const messages = {
   ru: {
     start: 'Выберите язык / Choose your language:',
@@ -50,17 +45,15 @@ const messages = {
   }
 };
 
-// Устанавливаем команды для бота
 bot.setMyCommands([
   { command: '/start', description: 'Начать работу с ботом' },
   { command: '/help', description: 'Помощь и информация' },
   { command: '/language', description: 'Выбрать язык' }
 ]);
 
-// Обработка команды /start
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
-  const lang = userLanguages[chatId] || 'ru'; // Получаем выбранный язык или по умолчанию русский
+  const lang = userLanguages[chatId] || 'ru'; 
   bot.sendMessage(chatId, messages[lang].start, {
     reply_markup: {
       inline_keyboard: [
@@ -71,10 +64,9 @@ bot.onText(/\/start/, (msg) => {
   });
 });
 
-// Обработка команды /language
 bot.onText(/\/language/, (msg) => {
   const chatId = msg.chat.id;
-  const lang = userLanguages[chatId] || 'ru'; // Получаем выбранный язык или по умолчанию русский
+  const lang = userLanguages[chatId] || 'ru'; 
   bot.sendMessage(chatId, messages[lang].start, {
     reply_markup: {
       inline_keyboard: [
@@ -85,14 +77,12 @@ bot.onText(/\/language/, (msg) => {
   });
 });
 
-// Обработка команды /help
 bot.onText(/\/help/, (msg) => {
   const chatId = msg.chat.id;
-  const lang = userLanguages[chatId] || 'ru'; // Получаем язык для этого чата
+  const lang = userLanguages[chatId] || 'ru'; 
   bot.sendMessage(chatId, messages[lang].help);
 });
 
-// Обработка выбора языка
 bot.on('callback_query', async callbackQuery => {
   const chatId = callbackQuery.message.chat.id;
   const data = callbackQuery.data;
@@ -100,7 +90,7 @@ bot.on('callback_query', async callbackQuery => {
   bot.answerCallbackQuery(callbackQuery.id);
 
   if (data === 'lang_ru') {
-    userLanguages[chatId] = 'ru'; // Сохраняем выбранный язык
+    userLanguages[chatId] = 'ru'; 
     bot.sendMessage(chatId, messages.ru.languageSet);
     bot.sendMessage(chatId, messages.ru.greeting, {
       reply_markup: {
@@ -112,7 +102,7 @@ bot.on('callback_query', async callbackQuery => {
       }
     });
   } else if (data === 'lang_en') {
-    userLanguages[chatId] = 'en'; // Сохраняем выбранный язык
+    userLanguages[chatId] = 'en';
     bot.sendMessage(chatId, messages.en.languageSet);
     bot.sendMessage(chatId, messages.en.greeting, {
       reply_markup: {
@@ -141,12 +131,10 @@ bot.on('callback_query', async callbackQuery => {
   }
 });
 
-// Обработка сообщений (например, видео)
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
-  const lang = userLanguages[chatId] || 'ru'; // Получаем язык для этого чата
+  const lang = userLanguages[chatId] || 'ru'; 
 
-  // Если получено видео
   if (msg.video) {
     const fileId = msg.video.file_id;
     const processingMessage = await bot.sendMessage(chatId, 'Видео получено, начинается обработка...');
