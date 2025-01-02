@@ -3,10 +3,10 @@ name: Node.js CI/CD Pipeline
 on:
   push:
     branches:
-      - main  # Пайплайн будет запускаться при каждом пуше в ветку main
+      - main
   pull_request:
     branches:
-      - main  # Также будет запускаться при создании pull request в main
+      - main
 
 jobs:
   build:
@@ -33,19 +33,12 @@ jobs:
         run: |
           npm test || true  # Если у вас есть тесты, добавьте их сюда
 
-      # Шаг 5: Сборка проекта (если необходимо)
-      - name: Build the project (если необходимо)
-        run: |
-          npm run build || true  # Если у вас есть шаг сборки, например, сборка бандла
-
-      # Шаг 6: Проверка DNS и доступности хоста
-      - name: Check DNS resolution and server availability
+      # Шаг 6: Проверка DNS-резолвинга
+      - name: Check DNS resolution for DEPLOY_HOST
         run: |
           echo "Testing DNS resolution for DEPLOY_HOST: $DEPLOY_HOST"
-          nslookup $DEPLOY_HOST || echo "Host resolution failed"
+          nslookup $DEPLOY_HOST || echo "DNS resolution failed"
           ping -c 4 $DEPLOY_HOST || echo "Ping failed"
-          # Пробуем подключиться к серверу через SSH
-          ssh -o ConnectTimeout=5 -i ~/.ssh/id_ed25519 $DEPLOY_USER@$DEPLOY_HOST 'echo "SSH connection successful"'
 
       # Шаг 7: Настройка SSH и деплой на сервер
       - name: Deploy to server
