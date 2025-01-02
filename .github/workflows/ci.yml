@@ -13,32 +13,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Шаг 1: Клонирование репозитория
       - name: Checkout repository
         uses: actions/checkout@v2
 
+      # Шаг 2: Установка Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: '18'  # Обновленная версия Node.js
 
+      # Шаг 3: Установка зависимостей
       - name: Install dependencies
         run: |
           npm install
 
+      # Шаг 4: Запуск тестов (если они есть)
       - name: Run tests (если есть)
         run: |
           npm test || true  # Если у вас есть тесты, добавьте их сюда
 
+      # Шаг 5: Проверка DNS-резолвинга
       - name: Check DNS resolution for DEPLOY_HOST
         run: |
-          echo "Testing DNS resolution for DEPLOY_HOST: $DEPLOY_HOST"
-          nslookup $DEPLOY_HOST || echo "DNS resolution failed"
-          ping -c 4 $DEPLOY_HOST || echo "Ping failed"
-      
+          echo "Testing DNS resolution for DEPLOY_HOST: 109.196.100.189"
+          nslookup 109.196.100.189 || echo "DNS resolution failed"
+          ping -c 4 109.196.100.189 || echo "Ping failed"
+
+      # Шаг 6: Настройка SSH и деплой на сервер
       - name: Deploy to server
         env:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_HOST: 109.196.100.189  # Используем IP-адрес вместо домена
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
           # Настройка ssh-agent
@@ -47,13 +53,12 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           
           # Добавление хоста в known_hosts для предотвращения ошибки при подключении
-          ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
+          ssh-keyscan -H 109.196.100.189 >> ~/.ssh/known_hosts
 
           # Подключение через SSH и выполнение команд на сервере
-          ssh -i ~/.ssh/id_ed25519 $DEPLOY_USER@$DEPLOY_HOST << 'EOF'
+          ssh -i ~/.ssh/id_ed25519 $DEPLOY_USER@109.196.100.189 << 'EOF'
             cd /path/to/your/project  # Убедитесь, что путь правильный
             git pull  # Загружаем последние изменения
             npm install  # Устанавливаем зависимости
             pm2 restart all  # Перезапуск приложения через pm2
           EOF
-
