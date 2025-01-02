@@ -10,53 +10,61 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # Используем последнюю версию Ubuntu для сборки
+    runs-on: ubuntu-latest
 
     steps:
       # Шаг 1: Клонирование репозитория
       - name: Checkout repository
-        uses: actions/checkout@v2  # Клонирование вашего репозитория
+        uses: actions/checkout@v2
 
       # Шаг 2: Установка Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '16'  # Убедитесь, что используете правильную версию Node.js
+          node-version: '16'
 
       # Шаг 3: Установка зависимостей
       - name: Install dependencies
         run: |
-          npm install  # Устанавливаем зависимости через npm
+          npm install
 
       # Шаг 4: Запуск тестов (если они есть)
       - name: Run tests (если есть)
         run: |
-          npm test || true  # Если у вас есть тесты, запустите их
+          npm test || true  # Если у вас есть тесты, добавьте их сюда
 
       # Шаг 5: Сборка проекта (если необходимо)
       - name: Build the project (если необходимо)
         run: |
-          npm run build || true  # Этот шаг нужен только если у вас есть процесс сборки (например, с Webpack или Babel)
+          npm run build || true  # Если у вас есть шаг сборки, например, сборка бандла
 
-      # Шаг 6: Настройка SSH и деплой на сервер
+      # Шаг 6: Проверка DNS и доступности хоста
+      - name: Check DNS resolution and server availability
+        run: |
+          echo "Testing DNS resolution for DEPLOY_HOST: $DEPLOY_HOST"
+          nslookup $DEPLOY_HOST || echo "Host resolution failed"
+          ping -c 4 $DEPLOY_HOST || echo "Ping failed"
+          # Пробуем подключиться к серверу через SSH
+          ssh -o ConnectTimeout=5 -i ~/.ssh/id_ed25519 $DEPLOY_USER@$DEPLOY_HOST 'echo "SSH connection successful"'
+
+      # Шаг 7: Настройка SSH и деплой на сервер
       - name: Deploy to server
         env:
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}  # Пользователь для SSH подключения
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}  # Хост для SSH подключения
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}  # SSH ключ для авторизации
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
           # Настройка ssh-agent
           mkdir -p ~/.ssh
-          echo "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519  # Записываем SSH ключ в файл
-          chmod 600 ~/.ssh/id_ed25519  # Меняем права доступа к ключу
-
+          echo "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
           # Добавление хоста в known_hosts для предотвращения ошибки при подключении
           ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
 
           # Подключение через SSH и выполнение команд на сервере
           ssh -i ~/.ssh/id_ed25519 $DEPLOY_USER@$DEPLOY_HOST << 'EOF'
             cd /path/to/your/project  # Убедитесь, что путь правильный
-            git pull  # Загружаем последние изменения из репозитория
+            git pull  # Загружаем последние изменения
             npm install  # Устанавливаем зависимости
-            pm2 restart all  # Перезапускаем приложение через pm2
+            pm2 restart all  # Перезапуск приложения через pm2
           EOF
