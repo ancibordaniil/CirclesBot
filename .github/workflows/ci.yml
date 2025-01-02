@@ -21,7 +21,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'  # Обновленная версия Node.js
+          node-version: '18'
 
       # Шаг 3: Установка зависимостей
       - name: Install dependencies
@@ -33,14 +33,7 @@ jobs:
         run: |
           npm test || true  # Если у вас есть тесты, добавьте их сюда
 
-      # Шаг 5: Проверка DNS-резолвинга
-      - name: Check DNS resolution for DEPLOY_HOST
-        run: |
-          echo "Testing DNS resolution for DEPLOY_HOST: 109.196.100.189"
-          nslookup 109.196.100.189 || echo "DNS resolution failed"
-          ping -c 4 109.196.100.189 || echo "Ping failed"
-
-      # Шаг 6: Настройка SSH и деплой на сервер
+      # Шаг 5: Настройка SSH и деплой на сервер
       - name: Deploy to server
         env:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
