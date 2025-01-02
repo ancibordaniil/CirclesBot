@@ -13,35 +13,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Шаг 1: Клонирование репозитория
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      # Шаг 2: Установка Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '16'
 
-      # Шаг 3: Установка зависимостей
       - name: Install dependencies
         run: |
           npm install
 
-      # Шаг 4: Запуск тестов (если они есть)
       - name: Run tests (если есть)
         run: |
           npm test || true  # Если у вас есть тесты, добавьте их сюда
 
-      # Шаг 6: Проверка DNS-резолвинга
       - name: Check DNS resolution for DEPLOY_HOST
         run: |
           echo "Testing DNS resolution for DEPLOY_HOST: $DEPLOY_HOST"
           nslookup $DEPLOY_HOST || echo "DNS resolution failed"
           ping -c 4 $DEPLOY_HOST || echo "Ping failed"
       
-      # Шаг 7: Настройка SSH и деплой на сервер
-
       - name: Deploy to server
         env:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
@@ -63,3 +56,4 @@ jobs:
             npm install  # Устанавливаем зависимости
             pm2 restart all  # Перезапуск приложения через pm2
           EOF
+
