@@ -39,9 +39,6 @@ jobs:
           echo "Testing DNS resolution for DEPLOY_HOST: $DEPLOY_HOST"
           nslookup $DEPLOY_HOST || echo "DNS resolution failed"
           ping -c 4 $DEPLOY_HOST || echo "Ping failed"
-
-      - name: Проверка переменной DEPLOY_HOST
-        run: echo "DEPLOY_HOST: $DEPLOY_HOST"
       
       - name: Настройка ssh-agent
         run: |
