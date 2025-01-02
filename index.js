@@ -57,7 +57,7 @@ bot.onText(/\/start/, (msg) => {
   bot.sendMessage(chatId, messages[lang].start, {
     reply_markup: {
       inline_keyboard: [
-        [{ text: '🇷🇺 Русский', callback_data: 'lang_ru' }],
+        [{ text: '🇷🇺 Русский', callback_data: 'lang_ru' }], 
         [{ text: '🇬🇧 English', callback_data: 'lang_en' }]
       ]
     }
@@ -131,6 +131,73 @@ bot.on('callback_query', async callbackQuery => {
   }
 });
 
+// Функция обработки видео
+const processVideo = async (inputPath, outputPath, chatId, lang) => {
+  try {
+    // Получаем информацию о видео, используя ffprobe
+    const probe = await new Promise((resolve, reject) => {
+      ffmpeg.ffprobe(inputPath, (err, metadata) => {
+        if (err) reject(err);
+        resolve(metadata);
+      });
+    });
+
+    // Получаем ширину и высоту видео
+    const { width, height } = probe.streams[0];
+
+    console.log(`Разрешение видео: ${width}x${height}`);
+
+    // Устанавливаем параметры фильтра в зависимости от размера видео
+    let cropFilter = '';
+    let scaleFilter = 'scale=400:400'; // Стандартный размер для видео
+
+    // Если ширина или высота видео меньше 400, то не применяем crop, или уменьшаем размер
+    if (width < 400 || height < 400) {
+      cropFilter = ''; // Убираем crop, если видео слишком маленькое
+      scaleFilter = `scale=${width}:${height}`; // Масштабируем под размер исходного видео
+    } else {
+      cropFilter = `crop=400:400:(iw-400)/2:(ih-400)/2`; // Обрезаем в круг
+    }
+
+    // Запускаем обработку видео с соответствующими фильтрами
+    ffmpeg(inputPath)
+      .videoFilter([cropFilter, scaleFilter]) // Применяем фильтры
+      .outputOptions('-pix_fmt', 'yuv420p')
+      .on('start', (commandLine) => {
+        console.log(`ffmpeg процесс стартовал: ${commandLine}`);
+      })
+      .on('stderr', (stderrLine) => {
+        console.log(`ffmpeg stderr: ${stderrLine}`);
+      })
+      .on('end', async () => {
+        if (fs.existsSync(outputPath)) {
+          const stats = fs.statSync(outputPath);
+          console.log(`Output file exists. Size: ${stats.size} bytes`);
+          await bot.sendVideoNote(chatId, outputPath, { caption: messages[lang].videoProcessed });
+        } else {
+          console.error('Ошибка: не удалось найти обработанное видео');
+          await bot.sendMessage(chatId, 'Ошибка: не удалось найти обработанное видео.');
+        }
+
+        try {
+          await fs.promises.unlink(inputPath);
+          await fs.promises.unlink(outputPath);
+        } catch (error) {
+          console.error('Ошибка при удалении файлов:', error.message);
+        }
+      })
+      .on('error', (err) => {
+        console.error('Ошибка при обработке видео:', err.message);
+        bot.sendMessage(chatId, `${messages[lang].error}: ${err.message}`);
+      })
+      .run();
+  } catch (error) {
+    console.error('Ошибка при получении метаданных видео:', error.message);
+    bot.sendMessage(chatId, `${messages[lang].error}: ${error.message}`);
+  }
+};
+
+// Обработка сообщения с видео
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const lang = userLanguages[chatId] || 'ru'; 
@@ -161,50 +228,16 @@ bot.on('message', async (msg) => {
       };
 
       await downloadVideo();
+      console.log(`Загружаем видео с file_id: ${fileId}`);
+      console.log(`Получена ссылка на файл: ${fileUrl}`);
+      console.log(`Начинаем загрузку видео в ${inputPath}`);
+      console.log('Видео загружено, начинаем обработку с ffmpeg.');
 
-      ffmpeg.setFfmpegPath(ffmpegPath);
-
-      ffmpeg(inputPath)
-        .output(outputPath)
-        .videoFilter([
-          'crop=400:400:(iw-400)/2:(ih-400)/2',
-          'scale=400:400'
-        ])
-        .outputOptions('-pix_fmt', 'yuv420p')
-        .on('start', (commandLine) => {
-          console.log(`ffmpeg process started: ${commandLine}`);
-        })
-        .on('stderr', (stderrLine) => {
-          console.log(`ffmpeg stderr: ${stderrLine}`);
-        })
-        .on('end', async () => {
-          if (fs.existsSync(outputPath)) {
-            const stats = fs.statSync(outputPath);
-            console.log(`Output file exists. Size: ${stats.size} bytes`);
-            await bot.sendVideoNote(chatId, outputPath, { caption: messages[lang].videoProcessed });
-          } else {
-            await bot.sendMessage(chatId, 'Ошибка: не удалось найти обработанное видео.');
-          }
-
-          try {
-            await fs.promises.unlink(inputPath);
-            await fs.promises.unlink(outputPath);
-          } catch (error) {
-            console.error('Ошибка при удалении файлов:', error.message);
-          }
-        })
-        .on('error', (err) => {
-          bot.sendMessage(chatId, `${messages[lang].error}: ${err.message}`);
-          console.error('Ошибка при обработке видео:', err.message);
-        })
-        .run();
+      await processVideo(inputPath, outputPath, chatId, lang);
+      
     } catch (error) {
-      bot.sendMessage(chatId, `${messages[lang].error}`);
-      console.error('Ошибка при скачивании или обработке видео:', error.message);
-    } finally {
-      bot.deleteMessage(chatId, processingMessage.message_id);
+      console.error('Ошибка при загрузке или обработке видео:', error.message);
+      bot.sendMessage(chatId, `${messages[lang].error}: ${error.message}`);
     }
   }
 });
-
-console.log('Бот запущен!');
