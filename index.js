@@ -228,10 +228,10 @@ bot.on('message', async (msg) => {
       };
 
       await downloadVideo();
-      console.log(`Загружаем видео с file_id: ${fileId}`);
-      console.log(`Получена ссылка на файл: ${fileUrl}`);
-      console.log(`Начинаем загрузку видео в ${inputPath}`);
-      console.log('Видео загружено, начинаем обработку с ffmpeg.');
+      // console.log(`Загружаем видео с file_id: ${fileId}`);
+      // console.log(`Получена ссылка на файл: ${fileUrl}`);
+      // console.log(`Начинаем загрузку видео в ${inputPath}`);
+      // console.log('Видео загружено, начинаем обработку с ffmpeg.');
 
       await processVideo(inputPath, outputPath, chatId, lang);
       
